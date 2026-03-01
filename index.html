@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoyettVerse - Buscador Inteligente</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --accent-color: #e50914;
+            --accent-hover: #f40612;
+            --text-main: #ffffff;
+            --text-sec: #b3b3b3;
+            --header-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; scroll-behavior: smooth; }
+        body { background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; }
+        a { text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+
+        /* --- HEADER --- */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: var(--header-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 60px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
+            z-index: 100;
+            transition: background 0.3s;
+        }
+        header.scrolled { background: rgba(15, 15, 15, 0.98); box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        
+        .logo {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        nav ul { display: flex; gap: 30px; }
+        nav a { font-weight: 500; transition: color 0.2s; cursor: pointer; }
+        nav a:hover { color: var(--accent-color); }
+
+        /* --- BARRA DE BÚSQUEDA Y AUTOCOMPLETADO --- */
+        .right-controls { display: flex; align-items: center; gap: 25px; position: relative; /* Importante para el dropdown */ }
+        
+        .search-container { position: relative; }
+
+        .search-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 40px 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            width: 220px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.9);
+            border-color: var(--text-main);
+        }
+
+        .search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--text-sec); pointer-events: none; }
+
+        /* Dropdown de Autocompletado */
+        .autocomplete-items {
+            position: absolute;
+            top: 100%; /* Justo debajo de la barra */
+            left: 0;
+            width: 100%; /* Mismo ancho que el input expandido o fijo */
+            min-width: 300px;
+            background: var(--bg-card);
+            border-radius: 10px;
+            margin-top: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            z-index: 1000;
+            display: none; /* Oculto por defecto */
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:hover { background: rgba(255,255,255,0.1); }
+
+        .autocomplete-thumb { width: 40px; height: 60px; object-fit: cover; border-radius: 4px; }
+        .autocomplete-info h4 { font-size: 0.95rem; margin-bottom: 3px; }
+        .autocomplete-info span { font-size: 0.8rem; color: var(--text-sec); }
+
+        /* --- USER AREA --- */
+        .btn-auth { background: var(--accent-color); color: white; padding: 8px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-auth:hover { background: var(--accent-hover); }
+        .user-avatar { width: 35px; height: 35px; background: var(--accent-color); border-radius: 5px; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; }
+
+        /* --- HERO --- */
+        .hero { height: 90vh; background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.8)), url('https://picsum.photos/id/1050/1920/1080'); background-size: cover; background-position: center; display: flex; align-items: center; padding: 0 60px; position: relative; }
+        .hero-content { z-index: 10; max-width: 600px; }
+        .hero-title { font-size: 3.5rem; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .hero-desc { font-size: 1.1rem; line-height: 1.5; margin-bottom: 25px; color: var(--text-sec); }
+        .btn-play, .btn-info { padding: 12px 30px; border-radius: 5px; font-weight: bold; border: none; cursor: pointer; font-size: 1rem; margin-right: 15px; transition: transform 0.2s; }
+        .btn-play { background: var(--accent-color); color: white; }
+        .btn-info { background: rgba(255,255,255,0.2); color: white; }
+        .btn-play:hover, .btn-info:hover { transform: scale(1.05); }
+
+        /* --- SECCIONES Y CARRUSELES --- */
+        .section-row { padding: 20px 60px; margin-top: -100px; position: relative; z-index: 20; margin-bottom: 40px; }
+        .section-title { font-size: 1.5rem; margin-bottom: 15px; border-left: 4px solid var(--accent-color); padding-left: 10px; }
+        
+        .slider-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; scroll-behavior: smooth; }
+        .slider-container::-webkit-scrollbar { display: none; }
+
+        /* --- TARJETAS --- */
+        .card {
+            min-width: 220px;
+            height: 330px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+            flex-shrink: 0; /* Para que no se encoja */
+        }
+
+        /* Efecto cuando se busca y encuentra */
+        .card.highlighted {
+            border-color: var(--accent-color);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px var(--accent-color);
+            z-index: 15;
+        }
+
+        .card:hover { transform: scale(1.05); z-index: 10; }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .card-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(transparent, rgba(0,0,0,0.95)); padding: 20px 15px 15px; opacity: 0; transition: opacity 0.3s; }
+        .card:hover .card-overlay { opacity: 1; }
+        .card-title { font-size: 1rem; font-weight: bold; margin-bottom: 5px; }
+        .card-meta { font-size: 0.8rem; color: var(--text-sec); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+
+        /* --- MODALS (Login y Video) --- */
+        /* Se mantienen los estilos anteriores de los modales por simplicidad, aquí resumidos */
+        .modal-overlay, .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        .auth-box { background: var(--bg-card); width: 100%; max-width: 420px; padding: 40px; border-radius: 10px; position: relative; }
+        .auth-input { width: 100%; padding: 15px; margin-bottom: 15px; background: #333; border: none; border-radius: 5px; color: white; outline: none; }
+        .modal-content { background: var(--bg-card); width: 90%; max-width: 900px; border-radius: 10px; overflow: hidden; }
+        .video-wrapper { width: 100%; height: 500px; background: #000; display: flex; justify-content: center; align-items: center; }
+        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 2rem; color: white; cursor: pointer; z-index: 10; }
+        .close-auth { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: var(--text-sec); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { padding: 0 20px; }
+            nav ul { display: none; }
+            .hero { padding: 0 20px; height: 70vh; }
+            .hero-title { font-size: 2rem; }
+            .section-row { padding: 20px; margin-top: -50px; }
+            .autocomplete-items { min-width: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header id="header">
+        <div class="logo" onclick="scrollToSection('inicio')">RoyettVerse</div>
+        <nav>
+            <ul>
+                <li><a onclick="scrollToSection('inicio')">Inicio</a></li>
+                <li><a onclick="scrollToSection('series')">Series</a></li>
+                <li><a onclick="scrollToSection('peliculas')">Películas</a></li>
+                <li><a onclick="scrollToSection('estrenos')">Estrenos</a></li>
+            </ul>
+        </nav>
+        
+        <div class="right-controls">
+            <!-- BUSCADOR CON AUTOCOMPLETADO -->
+            <div class="search-container">
+                <input type="text" id="search-bar" class="search-input" placeholder="Buscar película..." oninput="handleSearchInput(this.value)" autocomplete="off">
+                <span class="search-icon">🔍</span>
+                
+                <!-- Contenedor de sugerencias -->
+                <div id="autocomplete-list" class="autocomplete-items"></div>
+            </div>
+
+            <!-- USER AREA -->
+            <button id="btn-auth-main" class="btn-auth" onclick="showAuth('login')">Iniciar Sesión</button>
+            <div id="user-profile" style="display: none; align-items: center; gap: 10px;">
+                <span id="user-name-display"></span>
+                <div class="user-avatar" id="user-avatar-icon">U</div>
+                <button class="btn-auth" style="padding: 5px 10px; font-size: 0.8rem;" onclick="logout()">Salir</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- AUTH MODAL -->
+    <div class="auth-overlay" id="auth-modal">
+        <div class="auth-box">
+            <span class="close-auth" onclick="closeAuth()">&times;</span>
+            <h2 style="font-size: 2rem; margin-bottom: 20px; color: white;" id="auth-title">Iniciar Sesión</h2>
+            <form onsubmit="handleAuth(event)">
+                <div id="register-name" style="display: none;"><input type="text" id="auth-name" class="auth-input" placeholder="Nombre completo"></div>
+                <input type="email" id="auth-email" class="auth-input" placeholder="Correo electrónico" required>
+                <input type="password" id="auth-pass" class="auth-input" placeholder="Contraseña" required>
+                <button type="submit" class="btn-auth" style="width: 100%; padding: 15px; font-size: 1.1rem;"><span id="auth-btn-text">Entrar</span></button>
+            </form>
+            <div style="margin-top: 20px; color: var(--text-sec); text-align: center; cursor: pointer;">
+                <p id="auth-switch-text">¿Nuevo aquí? <span onclick="toggleAuthMode('register')" style="color:white; font-weight:bold;">Regístrate ahora</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HERO SECTION -->
+    <section class="hero" id="inicio">
+        <div class="hero-content">
+            <h1 class="hero-title">Bienvenido a RoyettVerse</h1>
+            <p class="hero-desc">Usa la barra de búsqueda para encontrar tus películas favoritas, como Spiderman, o explora nuestras categorías.</p>
+            <button class="btn-play" onclick="openModal({title: 'Trailer Destacado', desc: 'Disfruta del avance'})">▶ Ver Trailer</button>
+            <button class="btn-info" onclick="scrollToSection('peliculas')">Explorar Catálogo</button>
+        </div>
+    </section>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div id="main-content-container">
+        <!-- SERIES -->
+        <div class="section-row" id="series">
+            <h2 class="section-title">Series Populares</h2>
+            <div class="slider-container" id="series-slider"></div>
+        </div>
+
+        <!-- PELICULAS (Incluye Spidermans de ejemplo) -->
+        <div class="section-row" id="peliculas">
+            <h2 class="section-title">Películas Variadas</h2>
+            <div class="slider-container" id="movies-slider"></div>
+        </div>
+
+        <!-- ESTRENOS -->
+        <div class="section-row" id="estrenos">
+            <h2 class="section-title">Estrenos 2024</h2>
+            <div class="slider-container" id="new-slider"></div>
+        </div>
+    </div>
+
+    <!-- VIDEO MODAL -->
+    <div class="modal-overlay" id="modal">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <div class="modal-content">
+            <div class="video-wrapper"><h2 style="color: #333;">Reproduciendo...</h2></div>
+            <div style="padding: 20px;">
+                <h2 id="modal-title">Título</h2>
+                <p style="color: var(--text-sec); margin: 10px 0;">2024 • +16 • 2h</p>
+                <p id="modal-desc">Descripción...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. BASE DE DATOS (Agregados Spidermans) ---
+        const contentData = {
+            series: [
+                { id: 101, title: "The Last of Us", year: 2023, rating: "9.2", img: "https://picsum.photos/id/10/400/600", genre: "Drama" },
+                { id: 102, title: "House of Dragon", year: 2022, rating: "8.5", img: "https://picsum.photos/id/11/400/600", genre: "Fantasía" },
+                { id: 103, title: "Wednesday", year: 2022, rating: "8.0", img: "https://picsum.photos/id/12/400/600", genre: "Comedia" },
+                { id: 104, title: "Stranger Things", year: 2016, rating: "8.7", img: "https://picsum.photos/id/14/400/600", genre: "Terror" },
+            ],
+            movies: [
+                { id: 1, title: "Spiderman 1", year: 2002, rating: "8.0", img: "https://picsum.photos/id/30/400/600", genre: "Acción" },
+                { id: 2, title: "Spiderman 2", year: 2004, rating: "8.5", img: "https://picsum.photos/id/31/400/600", genre: "Acción" },
+                { id: 3, title: "Spiderman 3", year: 2007, rating: "7.5", img: "https://picsum.photos/id/32/400/600", genre: "Acción" },
+                { id: 4, title: "The Batman", year: 2022, rating: "8.2", img: "https://picsum.photos/id/3/400/600", genre: "Acción" },
+                { id: 5, title: "Oppenheimer", year: 2023, rating: "8.5", img: "https://picsum.photos/id/1/400/600", genre: "Drama" },
+                { id: 6, title: "Barbie", year: 2023, rating: "7.0", img: "https://picsum.photos/id/2/400/600", genre: "Comedia" },
+            ],
+            news: [
+                { id: 201, title: "Deadpool 3", year: 2024, rating: "8.0", img: "https://picsum.photos/id/20/400/600", genre: "Acción" },
+                { id: 202, title: "Furiosa", year: 2024, rating: "7.8", img: "https://picsum.photos/id/21/400/600", genre: "Acción" },
+            ]
+        };
+
+        // Aplanar datos para búsqueda y añadir referencia a su sección
+        const allContent = [
+            ...contentData.series.map(i => ({ ...i, section: 'series' })), 
+            ...contentData.movies.map(i => ({ ...i, section: 'peliculas' })), 
+            ...contentData.news.map(i => ({ ...i, section: 'estrenos' }))
+        ];
+
+        // --- ESTADO DE LA APP ---
+        let currentUser = JSON.parse(localStorage.getItem('royettverse_user'));
+        let myList = currentUser ? JSON.parse(localStorage.getItem(`royettverse_list_${currentUser.email}`)) || [] : [];
+
+        // --- LÓGICA DE AUTENTICACIÓN (Resumida por espacio) ---
+        function showAuth(type) { document.getElementById('auth-modal').style.display = 'flex'; toggleAuthMode(type); }
+        function closeAuth() { document.getElementById('auth-modal').style.display = 'none'; }
+        function toggleAuthMode(type) {
+            const isReg = type === 'register';
+            document.getElementById('auth-title').innerText = isReg ? "Crear Cuenta" : "Iniciar Sesión";
+            document.getElementById('auth-btn-text').innerText = isReg ? "Registrarse" : "Entrar";
+            document.getElementById('register-name').style.display = isReg ? 'block' : 'none';
+            document.getElementById('auth-switch-text').innerHTML = isReg ? '¿Ya tienes cuenta? <span onclick="toggleAuthMode(\'login\')">Inicia Sesión</span>' : '¿Nuevo aquí? <span onclick="toggleAuthMode(\'register\')">Regístrate ahora</span>';
+        }
+        function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            const name = document.getElementById('auth-name').value;
+            const isReg = document.getElementById('auth-title').innerText.includes("Crear");
+            let users = JSON.parse(localStorage.getItem('royettverse_users')) || [];
+
+            if (isReg) {
+                if (users.find(u => u.email === email)) return alert("Email ya registrado");
+                users.push({ name, email, pass });
+                localStorage.setItem('royettverse_users', JSON.stringify(users));
+                alert("Registro exitoso");
+                toggleAuthMode('login');
+            } else {
+                const user = users.find(u => u.email === email && u.pass === pass);
+                if (user) {
+                    localStorage.setItem('royettverse_user', JSON.stringify(user));
+                    currentUser = user;
+                    myList = JSON.parse(localStorage.getItem(`royettverse_list_${user.email}`)) || [];
+                    updateUI();
+                    closeAuth();
+                } else alert("Datos incorrectos");
+            }
+        }
+        function logout() { localStorage.removeItem('royettverse_user'); currentUser = null; myList = []; updateUI(); }
+        function updateUI() {
+            const isLogged = !!currentUser;
+            document.getElementById('btn-auth-main').style.display = isLogged ? 'none' : 'block';
+            document.getElementById('user-profile').style.display = isLogged ? 'flex' : 'none';
+            if(isLogged) {
+                document.getElementById('user-name-display').innerText = currentUser.name.split(' ')[0];
+                document.getElementById('user-avatar-icon').innerText = currentUser.name.charAt(0).toUpperCase();
+            }
+            populateSliders();
+        }
+
+        // --- LÓGICA DE BÚSQUEDA Y AUTOCOMPLETADO ---
+        
+        const searchInput = document.getElementById('search-bar');
+        const autocompleteList = document.getElementById('autocomplete-list');
+
+        function handleSearchInput(val) {
+            const query = val.toLowerCase().trim();
+            
+            if (query.length === 0) {
+                autocompleteList.style.display = 'none';
+                return;
+            }
+
+            // Buscar coincidencias (nombre, género, año)
+            const matches = allContent.filter(item => 
+                item.title.toLowerCase().includes(query) || 
+                item.genre.toLowerCase().includes(query) ||
+                item.year.toString().includes(query)
+            );
+
+            if (matches.length > 0) {
+                renderAutocomplete(matches);
+            } else {
+                autocompleteList.innerHTML = '<div style="padding: 10px; color: var(--text-sec); text-align: center;">Sin resultados</div>';
+                autocompleteList.style.display = 'block';
+            }
+        }
+
+        function renderAutocomplete(items) {
+            const html = items.map(item => `
+                <div class="autocomplete-item" onclick="selectItem(${item.id})">
+                    <img src="${item.img}" class="autocomplete-thumb">
+                    <div class="autocomplete-info">
+                        <h4>${item.title}</h4>
+                        <span>${item.year} • ${item.genre}</span>
+                    </div>
+                </div>
+            `).join('');
+            
+            autocompleteList.innerHTML = html;
+            autocompleteList.style.display = 'block';
+        }
+
+        function selectItem(id) {
+            const item = allContent.find(i => i.id === id);
+            if (!item) return;
+
+            // 1. Ocultar autocompletado y limpiar input
+            autocompleteList.style.display = 'none';
+            searchInput.value = item.title;
+
+            // 2. Desplazarse a la sección
+            const sectionEl = document.getElementById(item.section);
+            const sliderEl = sectionEl.querySelector('.slider-container');
+            
+            // Scroll vertical suave a la sección
+            sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // 3. Encontrar la tarjeta específica dentro del slider
+            // Usamos un timeout pequeño para asegurar que el DOM se haya renderizado si era dinámico
+            setTimeout(() => {
+                const targetCard = document.getElementById(`card-${id}`);
+                
+                if (targetCard) {
+                    // Scroll horizontal dentro del slider
+                    // Calculamos la posición para centrar la tarjeta
+                    const scrollLeft = targetCard.offsetLeft - (sliderEl.offsetWidth / 2) + (targetCard.offsetWidth / 2);
+                    sliderEl.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+
+                    // 4. Efecto visual de "Encontrado"
+                    targetCard.classList.add('highlighted');
+                    setTimeout(() => targetCard.classList.remove('highlighted'), 2000);
+                }
+            }, 500);
+        }
+
+        // Cerrar autocompletado si se hace clic fuera
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !autocompleteList.contains(e.target)) {
+                autocompleteList.style.display = 'none';
+            }
+        });
+
+        // --- LÓGICA DE CONTENIDO ---
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function createCard(item) {
+            return `
+                <div class="card" id="card-${item.id}">
+                    <img src="${item.img}" alt="${item.title}">
+                    <div class="card-overlay">
+                        <div class="card-title">${item.title}</div>
+                        <div class="card-meta">
+                            <span>⭐ ${item.rating}</span>
+                            <span>${item.genre}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function populateSliders() {
+            document.getElementById('series-slider').innerHTML = contentData.series.map(createCard).join('');
+            document.getElementById('movies-slider').innerHTML = contentData.movies.map(createCard).join('');
+            document.getElementById('new-slider').innerHTML = contentData.news.map(createCard).join('');
+        }
+
+        // --- MODAL VIDEO ---
+        function openModal(item) {
+            document.getElementById('modal-title').innerText = item.title;
+            document.getElementById('modal-desc').innerText = `Género: ${item.genre}. Disfruta de esta producción en RoyettVerse.`;
+            document.getElementById('modal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+        // --- INICIO ---
+        window.onload = function() {
+            updateUI();
+            window.onscroll = function() {
+                const header = document.getElementById('header');
+                if (window.scrollY > 50) header.classList.add('scrolled');
+                else header.classList.remove('scrolled');
+            };
+        };
+        
+        // Delegación de eventos para abrir modales en las tarjetas (ya que son dinámicas)
+        document.getElementById('main-content-container').addEventListener('click', function(e) {
+            const card = e.target.closest('.card');
+            if (card && !card.classList.contains('highlighted')) { // Evitar abrir modal si es el click automático de búsqueda
+                // Recuperar datos del item (búsqueda inversa simple)
+                const id = card.id.replace('card-', '');
+                const item = allContent.find(i => i.id == id);
+                if(item) openModal(item);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAuth(); closeModal(); } });
+        document.getElementById('auth-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeAuth(); });
+        document.getElementById('modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+
+    </script>
+</body>
+</html>
